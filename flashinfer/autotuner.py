@@ -1324,7 +1324,6 @@ class AutoTuner:
                                 unit="profile",
                                 leave=True,
                             )
-                        min_time = float("inf")
                         # Initialize runner and tactic as None in case of no valid tactic or runners are found
                         runner_id, tactic = None, None
                         skipped_count = 0
@@ -1457,18 +1456,14 @@ class AutoTuner:
                         # otherwise keep the default (tactic=-1).  If the default
                         # baseline itself failed to profile, fall back to the best
                         # candidate (preserving the previous fastest-wins behavior).
-                        if (
-                            best_runner_id is not None
-                            and best_time < default_time * (1.0 - self.switch_margin)
+                        if best_runner_id is not None and best_time < default_time * (
+                            1.0 - self.switch_margin
                         ):
                             runner_id, tactic = best_runner_id, best_tactic
-                            min_time = best_time
                         elif default_time < float("inf"):
                             runner_id, tactic = 0, -1
-                            min_time = default_time
                         else:
                             runner_id, tactic = best_runner_id, best_tactic
-                            min_time = best_time
 
                         if skipped_count > 0:
                             logger.info(
@@ -1579,9 +1574,7 @@ class AutoTuner:
                 src = 0
 
         with self._lock:
-            snapshot = {
-                k: (v[0], v[1]) for k, v in self.profiling_cache.items()
-            }
+            snapshot = {k: (v[0], v[1]) for k, v in self.profiling_cache.items()}
         payload = [snapshot]
         try:
             dist.broadcast_object_list(payload, src=src, group=process_group)
