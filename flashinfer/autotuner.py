@@ -5,6 +5,7 @@ import inspect
 import itertools
 import json
 import os
+import sys
 import tempfile
 import threading
 import weakref
@@ -689,9 +690,17 @@ def autotune(
             # ``distributed_process_group`` scopes the broadcast to the ranks
             # that actually shard the work (e.g. the MoE expert-parallel group);
             # ``None`` falls back to the default WORLD group.
-            tuner._maybe_sync_distributed_cache(
-                process_group=distributed_process_group
-            )
+            #
+            # Skip the collective while an exception is propagating: if one rank
+            # raised inside the tuning body it would still reach this ``finally``
+            # and block in ``dist.broadcast_object_list`` while the other ranks
+            # are elsewhere, deadlocking the whole group. A hung collective is
+            # not an exception, so the try/except inside the sync cannot recover
+            # from it -- we must simply not enter it during unwind.
+            if sys.exc_info()[0] is None:
+                tuner._maybe_sync_distributed_cache(
+                    process_group=distributed_process_group
+                )
 
         # Save configs on exit when tuning with a cache path,
         # but only if new profiling results were added this session

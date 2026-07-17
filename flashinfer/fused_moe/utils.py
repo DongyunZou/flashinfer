@@ -493,6 +493,14 @@ def make_balanced_local_topk_ids(
     if num_tokens == 0 or num_local_experts == 0 or top_k == 0:
         return torch.zeros(num_tokens, top_k, dtype=torch.int32, device=device)
 
+    if top_k > num_local_experts:
+        raise ValueError(
+            f"top_k ({top_k}) cannot exceed num_local_experts "
+            f"({num_local_experts}) for balanced local routing: the round-robin "
+            f"assignment would wrap and emit duplicate expert ids within a row, "
+            f"which MoE routing/sort kernels require to be distinct."
+        )
+
     # Round-robin assignment over the local shard. The ``top_k`` consecutive
     # values within a row are distinct mod ``num_local_experts`` whenever
     # ``top_k <= num_local_experts``; the aggregate per-expert count differs by
